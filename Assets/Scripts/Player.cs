@@ -9,6 +9,7 @@ public class Player : MonoBehaviour
     public GameObject GroundCheck;
     public float GroundCheckRadius = 0.25f;
     public LayerMask GroundLayer;
+    public float Gravity;
     public float AccelerationTime;
     public float BaseMoveSpeed;
     public float BaseJumpForce;
@@ -41,6 +42,15 @@ public class Player : MonoBehaviour
         // check for slope
         CheckForSlope();
 
+        if (!isSlopedGround)
+        {
+            RigidBody.AddForce(Physics.gravity, ForceMode2D.Force);
+        }
+        else
+        {
+            RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force);
+        }
+
         // update max speed
         moveSpeed = BaseMoveSpeed;
         jumpForce = BaseJumpForce;
@@ -53,12 +63,6 @@ public class Player : MonoBehaviour
             newHorizontalVelocity = new Vector2(newHorizontalVelocity.x * slopeNormal_perpendicular.x, newHorizontalVelocity.x * slopeNormal_perpendicular.y);
         }
         RigidBody.velocity = new Vector2(math.clamp(newHorizontalVelocity.x, -moveSpeed, moveSpeed), RigidBody.velocity.y);
-        //if (horizontalInput == 0f)
-        //{
-        //    newHorizontalVelocity = new(RigidBody.velocity.x * -(moveSpeed / AccelerationTime) * Time.deltaTime, 0);
-        //    //newHorizontalVelocity *= slopeNormal_perpendicular;
-        //    RigidBody.velocity = new Vector2(math.clamp(RigidBody.velocity.x - newHorizontalVelocity.x, -moveSpeed, moveSpeed), RigidBody.velocity.y);
-        //}
 
         // if jump is pressed and player is grounded
         if (Input.GetButtonDown("Jump") && isGrounded)
