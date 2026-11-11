@@ -44,10 +44,12 @@ public class Player : MonoBehaviour
 
         if (!isSlopedGround)
         {
-            RigidBody.AddForce(Physics.gravity, ForceMode2D.Force);
+            // normal ground/air, normal gravity
+            RigidBody.AddForce(Physics.gravity * Gravity, ForceMode2D.Force);
         }
         else
         {
+            // on slopes, pull the player into the slope (prevents sliding)
             RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force);
         }
 
@@ -56,13 +58,25 @@ public class Player : MonoBehaviour
         jumpForce = BaseJumpForce;
 
         // update horizontal velocity
-        Vector2 newHorizontalVelocity = new(RigidBody.velocity.x + horizontalInput * (moveSpeed / AccelerationTime) * Time.deltaTime, 1);
+        float accelRate = (moveSpeed / AccelerationTime) * Time.deltaTime;
         if (isGrounded && isSlopedGround)
         {
-            Debug.Log(slopeNormal_perpendicular);
-            newHorizontalVelocity = new Vector2(newHorizontalVelocity.x * slopeNormal_perpendicular.x, newHorizontalVelocity.x * slopeNormal_perpendicular.y);
+            // target velocity
+            Vector2 targetSlopeVelocity = -slopeNormal_perpendicular * horizontalInput * moveSpeed;
+
+            // accelerate/move/etc
+            RigidBody.velocity = Vector2.MoveTowards(RigidBody.velocity, targetSlopeVelocity, accelRate);
         }
-        RigidBody.velocity = new Vector2(math.clamp(newHorizontalVelocity.x, -moveSpeed, moveSpeed), RigidBody.velocity.y);
+        else
+        {
+            // non-sloped movement
+            // target velocity
+            Vector2 targetVelocity = new(horizontalInput * moveSpeed, 0); // 0 as a placeholder for y magnitude because we dont use it
+            // get the accelerated velocity
+            Vector2 horizontalVelocity = Vector2.MoveTowards(RigidBody.velocity, targetVelocity, accelRate);
+            // clamp velocity (max move speed) and apply to rigidbody
+            RigidBody.velocity = new Vector2(math.clamp(horizontalVelocity.x, -moveSpeed, moveSpeed), RigidBody.velocity.y);
+        }
 
         // if jump is pressed and player is grounded
         if (Input.GetButtonDown("Jump") && isGrounded)
@@ -87,14 +101,18 @@ public class Player : MonoBehaviour
         }
         else
         {
-            RaycastHit2D rayResult = Physics2D.Raycast(GroundCheck.transform.position, Vector2.down, GroundCheckRadius, GroundLayer);
+            RaycastHit2D rayResult = Physics2D.Raycast(GroundCheck.transform.position, Vector2.down, GroundCheckRadius + 1, GroundLayer);
 
             if (rayResult)
             {
+                // get normal
                 slopeNormal = rayResult.normal;
+                // get perpendicular vector for applying forces and tings
                 slopeNormal_perpendicular = Vector2.Perpendicular(slopeNormal).normalized;
+                // if greater than theshold of 0.01, we consider the ground slanted
                 isSlopedGround = math.abs(slopeNormal.x) > 0.01f;
 
+                // show the slope of the surface the player is on
                 Debug.DrawRay(rayResult.point, slopeNormal, Color.green);
                 Debug.DrawRay(rayResult.point, slopeNormal_perpendicular, Color.red);
             }
