@@ -13,7 +13,9 @@ public class Player : MonoBehaviour
     public float AccelerationTime;
     public float BaseMoveSpeed;
     public float BaseJumpForce;
+    public bool LockControls = false;
     public Animator AnimationController;
+    public GameObject GameManager;
 
 
     private float horizontalInput;
@@ -39,23 +41,24 @@ public class Player : MonoBehaviour
     void Update()
     {
         // get horizontal input from player
-        horizontalInput = Input.GetAxisRaw("Horizontal");
+        if (!LockControls) horizontalInput = Input.GetAxisRaw("Horizontal"); // get horizontal input if controls arent locked
 
         // check if player is grounded
         isGrounded = Physics2D.OverlapCircle(GroundCheck.transform.position, GroundCheckRadius, GroundLayer);
         // check for slope
         CheckForSlope();
 
+
         if (!isSlopedGround) // gravity stuff
         {
             // normal ground/air, normal gravity
-            //RigidBody.AddForce(Physics.gravity * Gravity, ForceMode2D.Force);
+            //RigidBody.AddForce(Physics.gravity * Gravity, ForceMode2D.Force); old gravity code
             RigidBody.velocity = new Vector2(RigidBody.velocity.x, RigidBody.velocity.y + Physics.gravity.y * Gravity * Time.deltaTime);
         }
         else
         {
             // on slopes, pull the player into the slope (prevents sliding)
-            //RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force);
+            //RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force); old gravity code
             RigidBody.velocity = new Vector2(RigidBody.velocity.x + (-slopeNormal.x * Physics.gravity.magnitude * Gravity * Time.deltaTime), RigidBody.velocity.y + (-slopeNormal.y * Physics.gravity.magnitude * Gravity * Time.deltaTime));
         }
 
@@ -75,10 +78,10 @@ public class Player : MonoBehaviour
         }
         else // non-sloped movement
         {
-            
+
             // target velocity
             Vector2 targetVelocity = new(horizontalInput * moveSpeed, 0); // 0 as a placeholder for y magnitude because we dont use it
-            // get the accelerated velocity
+                                                                            // get the accelerated velocity
             Vector2 horizontalVelocity = Vector2.MoveTowards(RigidBody.velocity, targetVelocity, accelRate);
             // clamp velocity (max move speed) and apply to rigidbody
             RigidBody.velocity = new Vector2(math.clamp(horizontalVelocity.x, -moveSpeed, moveSpeed), RigidBody.velocity.y);
@@ -115,13 +118,38 @@ public class Player : MonoBehaviour
 
 
 
-        // if jump is pressed and player is grounded
-        if (Input.GetButton("Jump") && isGrounded)
+        // if jump is pressed and player is grounded and controls arent locked
+        if (Input.GetButton("Jump") && isGrounded && !LockControls)
         {
             // run jump function
             Jump();
         }
     }
+
+
+
+    // triggers
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        switch (collision.tag)
+        {
+            case "Move":
+                {
+                    LockControls = true;
+                    Vector3 targetObjectPosition = collision.transform.Find("Target").position;
+                    Vector3 target = new Vector3(targetObjectPosition.x, targetObjectPosition.y, gameObject.transform.position.z); // maintain our original z position
+                    float distance = (collision.transform.position - target).magnitude;
+                    float time = distance / moveSpeed;
+                    GameManager.GetComponent<MoveToTarget>().Move(gameObject, target, time, 67f);
+                    break;
+                }
+        }
+    }
+
+
+
+
+    // methods
 
     void Jump()
     {
