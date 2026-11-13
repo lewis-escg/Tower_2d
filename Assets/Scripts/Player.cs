@@ -49,12 +49,14 @@ public class Player : MonoBehaviour
         if (!isSlopedGround) // gravity stuff
         {
             // normal ground/air, normal gravity
-            RigidBody.AddForce(Physics.gravity * Gravity, ForceMode2D.Force);
+            //RigidBody.AddForce(Physics.gravity * Gravity, ForceMode2D.Force);
+            RigidBody.velocity = new Vector2(RigidBody.velocity.x, RigidBody.velocity.y + Physics.gravity.y * Gravity * Time.deltaTime);
         }
         else
         {
             // on slopes, pull the player into the slope (prevents sliding)
-            RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force);
+            //RigidBody.AddForce(-slopeNormal * Physics.gravity.magnitude * Gravity, ForceMode2D.Force);
+            RigidBody.velocity = new Vector2(RigidBody.velocity.x + (-slopeNormal.x * Physics.gravity.magnitude * Gravity * Time.deltaTime), RigidBody.velocity.y + (-slopeNormal.y * Physics.gravity.magnitude * Gravity * Time.deltaTime));
         }
 
         // update max speed
@@ -114,7 +116,7 @@ public class Player : MonoBehaviour
 
 
         // if jump is pressed and player is grounded
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        if (Input.GetButton("Jump") && isGrounded)
         {
             // run jump function
             Jump();
