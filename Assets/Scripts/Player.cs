@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
+using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -13,6 +15,7 @@ public class Player : MonoBehaviour
     public float AccelerationTime;
     public float BaseMoveSpeed;
     public float BaseJumpForce;
+    public float MoveSequenceSpeed;
     public bool LockControls = false;
     public Animator AnimationController;
     public GameObject GameManager;
@@ -26,6 +29,7 @@ public class Player : MonoBehaviour
     private float moveSpeed;
     private float jumpForce;
     private Vector3 originalScale;
+    private List<GameObject> interactables = new();
 
 
 
@@ -89,7 +93,7 @@ public class Player : MonoBehaviour
 
 
         // visuals (facing direction, animations, etc)
-        if (RigidBody.velocity.x > 0.01f)
+        if (RigidBody.velocity.x > 0.1f)
         {
             transform.localScale = originalScale;
             if (AnimationController.GetInteger("State") != 1) // if not walking
@@ -98,7 +102,7 @@ public class Player : MonoBehaviour
                 AnimationController.SetTrigger("Walk"); // run walk animation
             }
         }
-        else if (RigidBody.velocity.x < -0.01f)
+        else if (RigidBody.velocity.x < -0.1f)
         {
             transform.localScale = new Vector2(originalScale.x * -1, originalScale.y);
             if (AnimationController.GetInteger("State") != 1) // if not walking
@@ -124,23 +128,66 @@ public class Player : MonoBehaviour
             // run jump function
             Jump();
         }
+
+        if (Input.GetKeyDown(KeyCode.E) && !LockControls) // when E is pressed and controls arent locked
+        {
+            GameObject closestInteractable = null;
+            float distance = 100.0f; // compare to see which distance is least, so we start with a big one
+            foreach (GameObject interactable in interactables) // for every available interactable
+            {
+                float distanceCheck = (transform.position - interactable.transform.position).magnitude; // get distance
+                if (distanceCheck < distance && interactable.activeInHierarchy) // if distance is less than others so far and is active
+                {
+                    distance = distanceCheck; // set new distance
+                    closestInteractable = interactable; // set new closest interactable
+                }
+            }
+            if (closestInteractable != null)
+            {
+                if (closestInteractable.TryGetComponent<Interact>(out Interact interaction)) // if interactable exists and has interact component
+                {
+                    interaction.RunInteraction(this); // run interaction
+                }
+            }
+        }
+
     }
 
 
 
     // triggers
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void OnTriggerEnter2D(Collider2D collision) // enter trigger
     {
         switch (collision.tag)
         {
-            case "Move":
+            case "Move": // move sequence
                 {
                     LockControls = true;
                     Vector3 targetObjectPosition = collision.transform.Find("Target").position;
                     Vector3 target = new Vector3(targetObjectPosition.x, targetObjectPosition.y, gameObject.transform.position.z); // maintain our original z position
                     float distance = (collision.transform.position - target).magnitude;
                     float time = distance / moveSpeed;
-                    GameManager.GetComponent<MoveToTarget>().Move(gameObject, target, time, 67f);
+                    GameManager.GetComponent<MoveToTarget>().Move(gameObject, target, time * (1/MoveSequenceSpeed), 67f);
+                    break;
+                }
+            case "Interact": // interactable
+                {
+                    interactables.Add(collision.gameObject); // add to interactables list
+                    break;
+                }
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collision) // exit trigger
+    {
+        switch (collision.tag)
+        {
+            case "Interact": // interactable
+                {
+                    if (interactables.Contains(collision.gameObject)) // if in interactables list
+                    {
+                        interactables.Remove(collision.gameObject); // remove from interactables list
+                    }
                     break;
                 }
         }
