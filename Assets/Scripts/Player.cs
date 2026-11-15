@@ -142,7 +142,7 @@ public class Player : MonoBehaviour
                     closestInteractable = interactable; // set new closest interactable
                 }
             }
-            if (closestInteractable != null)
+            if (closestInteractable != null) // if it even exists still
             {
                 if (closestInteractable.TryGetComponent<Interact>(out Interact interaction)) // if interactable exists and has interact component
                 {
